@@ -1,4 +1,7 @@
+import re
 from collections import UserDict
+from datetime import datetime
+from birthday_function import get_upcoming_birthdays
 
 
 class Field():
@@ -11,16 +14,9 @@ class Field():
         return str(self.value)    
 
 
-
 class Name(Field):
     #  Клас для зберігання імені контакту.
     pass
-
-name1 = Name('Bob')
-name2 = Name('Suizi')
-print(name1)
-print(name2)
-
 
 class Phone(Field):
     # Клас для зберігання номера телефону. Має валідацію формату (10 цифр).
@@ -40,28 +36,27 @@ class Phone(Field):
         self._value = value 
 
 class Birthday(Field):
-    # TODO
+    # Додайте перевірку коректності даних та перетворіть рядок на об'єкт datetime
     def __init__(self, value):
         try:
-            pass
-            # Додайте перевірку коректності даних
-            # та перетворіть рядок на об'єкт datetime
-        except ValueError:
+            # перевірка валідності введеної дати за допомогою бібліотеки datetime
+            self.value = datetime.strptime(value, '%d.%m.%Y').date()
+        except:
+            # юзер френдлі повідомлення про помилку
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
 
 class Record():
-    # Клас для зберігання інформації про контакт, включаючи ім'я та список телефонів
     def __init__(self, name):
         self.name = Name(name)
-        self.phones = []
+        # TODO Додайте функціонал перевірки на правильність наведених значень для полів Phone, Birthday.
+        self.phones = [] 
         self.birthday = None
 
     def add_phone(self, phone):
         self.phones.append(Phone(phone))
-        
-    def add_birthday(self, date):
-        # TODO
-        pass    
+            
+    def add_birthday(self, value):
+        self.birthday = Birthday(value)
 
     def remove_phone(self, phone):
         for p in self.phones:
@@ -77,15 +72,22 @@ class Record():
         return next((p for p in self.phones if p.value == phone), None)
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
-
-
+        if self.birthday:
+            return f'''Contact name: {self.name.value}, 
+    phones: {'; '.join(p.value for p in self.phones)}, 
+    birthday {self.birthday.value}'''
+        else:
+            return f'''Contact name: {self.name.value}, 
+    phones: {'; '.join(p.value for p in self.phones)}'''
 
 class AddressBook(UserDict):
     # Клас для зберігання та управління записами.
 
     def __init__(self):
         self.data = dict()
+        
+    def __str__(self):
+        return str(self.data)
 
     def add_record(self, record:Record):                               
         # self.data Реалізовано метод add_record, який додає запис до self.data.
@@ -96,6 +98,38 @@ class AddressBook(UserDict):
 
     def delete(self, name: str):
         del self.data[name]
+    
+    def get_upcoming_birthdays(self):
+        """
+        The function should determine list of people whose birthdays are in next 7 days including the current day.
+        If the birthday falls on a weekend, the date of the greeting is moved to the following Monday.
+        """
+        current_date = datetime.today().date()
+        
+        # Find users whose birthdays are within the next 7 days
+        upcoming_birthdays = []
+        for username, user in self.data.items():
+            # Create birthday for the current year
+            if user.birthday:
+                current_year_birthday = user.birthday.value.replace(year=current_date.year)
+                
+                # If the birthday has already passed, skip to next year
+                if current_year_birthday < current_date:
+                    current_year_birthday = current_year_birthday.replace(year=current_date.year + 1)
+
+                difference = (current_year_birthday - current_date).days
+
+                # Check if the birthday is within the next 7 days
+                if 0 <= difference <= 7:
+                    # Check if the birthday falls on a weekend (Saturday or Sunday)
+                    if current_year_birthday.weekday() in [5, 6]:  # Saturday or Sunday
+                        # Move to next Monday
+                        next_monday = current_year_birthday + timedelta(days=(7 - current_year_birthday.weekday()))
+                        upcoming_birthdays.append({'name': username, 'congratulation_date': str(next_monday)})
+                    else:
+                        upcoming_birthdays.append({'name': username, 'congratulation_date': str(current_year_birthday)})
+
+        return upcoming_birthdays
 
 
 # Створення нової адресної книги
@@ -105,6 +139,10 @@ book = AddressBook()
 john_record = Record("John")
 john_record.add_phone("1234567890")
 john_record.add_phone("5555555555")
+john_record.add_birthday('6.11.1993')
+# john_record.add_birthday('05.04.1997')
+# john_record.add_birthday('01.01.1990')
+print(john_record)  # To remove
 
 # Додавання запису John до адресної книги
 book.add_record(john_record)
@@ -112,6 +150,7 @@ book.add_record(john_record)
 # Створення та додавання нового запису для Jane
 jane_record = Record("Jane")
 jane_record.add_phone("9876543210")
+jane_record.add_birthday('4.12.2002')
 book.add_record(jane_record)
 
 # Виведення всіх записів у книзі
@@ -128,8 +167,8 @@ print(john)  # Виведення: Contact name: John, phones: 1112223333; 55555
 found_phone = john.find_phone("5555555555")
 print(f"{john.name}: {found_phone}")  # Виведення: 5555555555
 
-# Видалення запису Jane
-book.delete("Jane")
-
 john_record.remove_phone('5555555555')
 print(john)  # Виведення: Contact name: John, phones: 1112223333
+
+print('Address Book: ', book)
+print(f"Upcoming birthdays: {book.get_upcoming_birthdays()}")
