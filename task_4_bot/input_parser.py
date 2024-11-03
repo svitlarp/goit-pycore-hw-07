@@ -18,9 +18,9 @@ def parse_cmd(text: str):
             return 'add-birthday', split_input[1:]
         elif re.match(r'^show-birthday', text) and len(split_input) == 2:
             return 'show-birthday', split_input[1]
-        elif text == "birthdays":
+        elif text.lower() == "birthdays":
             return 'birthdays', []
-        elif text.lower() == "exit":
+        elif text.lower() == "exit" or text.lower() == "close":
             return 'exit', []
         else:
             return text, []
